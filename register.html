@@ -1,0 +1,27 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Shixmax — Регистрация</title><link rel="stylesheet" href="styles.css"></head><body>
+  <div class="center"><div class="card"><h2>Регистрация</h2>
+  <div style="margin-top:8px"><input id="r_email" placeholder="Email" style="width:100%;padding:8px;border:1px solid #e6eef8;border-radius:8px"></div>
+  <div style="margin-top:8px"><input id="r_pass" type="password" placeholder="Пароль" style="width:100%;padding:8px;border:1px solid #e6eef8;border-radius:8px"></div>
+  <div style="margin-top:8px"><input id="r_name" placeholder="Никнейм" style="width:100%;padding:8px;border:1px solid #e6eef8;border-radius:8px"></div>
+  <div style="margin-top:8px"><input id="r_avatar" type="file" accept="image/*"></div>
+  <div style="margin-top:12px;display:flex;gap:8px"><button id="regBtn" class="btn">Зарегистрироваться</button><a href="index.html" class="small" style="align-self:center">Войти</a></div></div></div>
+<script src="firebase.js"></script>
+<script>
+document.getElementById('regBtn').addEventListener('click', async ()=>{
+  const email=document.getElementById('r_email').value.trim(); const pass=document.getElementById('r_pass').value; const name=document.getElementById('r_name').value.trim()||'User';
+  if(!email||!pass) return alert('Введите email и пароль');
+  try{
+    const cred = await auth.createUserWithEmailAndPassword(email, pass);
+    const uid = cred.user.uid;
+    let avatarUrl = null;
+    const f = document.getElementById('r_avatar').files[0];
+    if(f){
+      const ucFile = uploadcare.fileFrom('object', f);
+      const uploaded = await ucFile.upload();
+      avatarUrl = uploaded.cdnUrl;
+    }
+    await db.ref(`profiles/${uid}`).set({ name, avatar: avatarUrl, created: Date.now() });
+    window.location.href='index_main.html';
+  }catch(e){ alert(e.message); }
+});
+</script></body></html>

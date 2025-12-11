@@ -1,0 +1,16 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Shixmax — Вход</title><link rel="stylesheet" href="styles.css"></head><body>
+  <div class="center"><div class="card"><h2>Вход в Shixmax</h2>
+  <div style="margin-top:8px"><input id="email" placeholder="Email" style="width:100%;padding:8px;border:1px solid #e6eef8;border-radius:8px"></div>
+  <div style="margin-top:8px"><input id="password" type="password" placeholder="Пароль" style="width:100%;padding:8px;border:1px solid #e6eef8;border-radius:8px"></div>
+  <div style="margin-top:12px;display:flex;gap:8px"><button id="loginBtn" class="btn">Войти</button><a href="register.html" class="small" style="align-self:center">Регистрация</a></div>
+  <div style="margin-top:8px"><a id="forgot" href="#" class="small">Забыли пароль?</a></div></div></div>
+<script src="firebase.js"></script>
+<script>
+const loginBtn = document.getElementById('loginBtn');
+loginBtn.addEventListener('click', async ()=>{
+  const email = document.getElementById('email').value.trim(); const pass = document.getElementById('password').value;
+  if(!email||!pass) return alert('Введите email и пароль');
+  try{ await auth.signInWithEmailAndPassword(email, pass); window.location.href='index_main.html'; }catch(e){ alert(e.message); }
+});
+document.getElementById('forgot').addEventListener('click', async (e)=>{ e.preventDefault(); const email=document.getElementById('email').value.trim(); if(!email) return alert('Введите email'); try{ await auth.sendPasswordResetEmail(email); alert('Письмо отправлено'); }catch(e){ alert(e.message); } });
+</script></body></html>

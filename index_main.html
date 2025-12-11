@@ -1,0 +1,23 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Shixmax — Главная</title><link rel="stylesheet" href="styles.css"></head><body>
+  <div class="header"><div class="brand">Shixmax</div><div class="small" id="userMenu"></div></div>
+  <div class="container">
+    <aside class="sidebar">
+      <div class="profile-box"><div class="avatar-preview" id="myAvatar"><img id="myAvatarImg" src=""></div><div><div id="myName" style="font-weight:700"></div><div class="small" id="myEmail"></div></div></div>
+      <div style="margin-top:8px"><button id="newChat" class="btn">Новый чат</button></div>
+      <ul id="roomsList" class="rooms"></ul>
+      <div style="margin-top:12px"><a href="profile.html" class="small">Профиль</a> · <a href="settings.html" class="small">Настройки</a> · <a href="#" id="logout" class="small">Выйти</a></div>
+    </aside>
+    <main class="main"><div class="center"><div class="small">Выберите чат слева или создайте новый.</div></div></main>
+  </div>
+<script src="firebase.js"></script>
+<script>
+auth.onAuthStateChanged(async user=>{
+  if(!user) return location.href='index.html';
+  const uid=user.uid;
+  const snap=await db.ref('profiles/'+uid).once('value'); const p=snap.val()||{};
+  document.getElementById('myName').textContent = p.name || user.email; document.getElementById('myEmail').textContent = user.email||''; if(p.avatar) document.getElementById('myAvatarImg').src = p.avatar;
+  db.ref('rooms_meta').on('value', snap=>{ const v=snap.val()||{}; const list=document.getElementById('roomsList'); list.innerHTML=''; Object.keys(v).forEach(k=>{ const li=document.createElement('li'); li.className='room'; li.textContent = k; li.addEventListener('click', ()=> location.href='chat.html?room='+encodeURIComponent(k)); list.appendChild(li); }); });
+});
+document.getElementById('newChat').addEventListener('click', ()=>{ const name=prompt('Имя новой комнаты (без пробелов):'); if(!name) return; const pwd=prompt('Пароль (опционально):')||''; db.ref(`rooms_meta/${name}`).set({ created: Date.now(), password: pwd||null }); location.href='chat.html?room='+encodeURIComponent(name); });
+document.getElementById('logout').addEventListener('click', ()=>{ auth.signOut().then(()=>location.href='index.html'); });
+</script></body></html>

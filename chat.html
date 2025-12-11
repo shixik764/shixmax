@@ -1,0 +1,42 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Shixmax — Chat</title><link rel="stylesheet" href="styles.css"></head><body>
+  <div class="header"><div class="brand">Shixmax</div><div id="roomTitle" class="small">—</div></div>
+  <div class="container">
+    <aside class="sidebar">
+      <div class="profile-box"><div class="avatar-preview" id="myAvatar"><img id="myAvatarImg" src=""></div><div><div id="myName" style="font-weight:700"></div><div class="small" id="myEmail"></div></div></div>
+      <div style="margin-top:8px"><button id="backBtn" class="btn">← Назад</button></div>
+      <ul id="roomsList" class="rooms"></ul>
+    </aside>
+    <main class="main">
+      <section id="messages" class="messages"></section>
+      <div class="footer">
+        <label class="filebtn"><input id="fileInput" type="file" hidden>📎</label>
+        <button id="voiceBtn" class="filebtn">🎤</button>
+        <textarea id="messageInput" class="input" placeholder="Введите сообщение..." rows="1"></textarea>
+        <button id="emojiBtn" class="filebtn">😊</button>
+        <div id="emojiPicker" class="emoji-picker" hidden></div>
+        <button id="sendBtn" class="btn">Отправить</button>
+      </div>
+    </main>
+  </div>
+<script src="firebase.js"></script>
+<script>
+function qsParam(name){ const u=new URL(location.href); return u.searchParams.get(name); }
+const room = qsParam('room') || 'general'; document.getElementById('roomTitle').textContent = room;
+auth.onAuthStateChanged(async user => {
+  if(!user) return location.href='index.html';
+  const uid = user.uid;
+  const profSnap = await db.ref(`profiles/${uid}`).once('value'); const prof = profSnap.val()||{};
+  document.getElementById('myName').textContent = prof.name || user.email; if(prof.avatar) document.getElementById('myAvatarImg').src = prof.avatar;
+  document.getElementById('myEmail').textContent = user.email;
+  const msgsEl = document.getElementById('messages'); const rendered = new Set();
+  const mRef = db.ref(`rooms/${room}/messages`);
+  mRef.on('child_added', snap=>{ if(!snap.exists()) return; if(rendered.has(snap.key)) return; const d=snap.val(); const div=document.createElement('div'); div.className='msg' + (d.userId===uid? ' me':''); div.dataset.id = snap.key; div.innerHTML = `<div class="meta"><strong>${d.name}</strong> <span class="small">${new Date(d.time).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span></div><div>${d.text||''}</div>`; if(d.image) div.innerHTML += `<img src="${d.image}" class="msg-img">`; if(d.audio) div.innerHTML += `<audio controls src="${d.audio}" class="msg-audio"></audio>`; if(d.file) div.innerHTML += `<div class="small"><a href="${d.file}" download>${d.fileName||'file'}</a></div>`; msgsEl.appendChild(div); msgsEl.scrollTop = msgsEl.scrollHeight; rendered.add(snap.key); });
+  document.getElementById('fileInput').addEventListener('change', async ()=>{ const f = document.getElementById('fileInput').files[0]; if(!f) return; const ucFile = uploadcare.fileFrom('object', f); const uploaded = await ucFile.upload(); const url = uploaded.cdnUrl; const ext = f.name.split('.').pop().toLowerCase(); const payload={ name: prof.name||user.email, userId: uid, time: Date.now()}; if(['jpg','jpeg','png','gif','webp'].includes(ext)) payload.image = url; else if(['mp3','wav','ogg','webm'].includes(ext)) payload.audio = url; else { payload.file = url; payload.fileName = f.name; } await db.ref(`rooms/${room}/messages`).push(payload); document.getElementById('fileInput').value=''; });
+  let recorder=null; let chunks=[]; document.getElementById('voiceBtn').addEventListener('click', async ()=>{ if(recorder && recorder.state==='recording'){ recorder.stop(); return; } const stream = await navigator.mediaDevices.getUserMedia({ audio:true }); recorder = new MediaRecorder(stream); chunks=[]; recorder.ondataavailable = e=>chunks.push(e.data); recorder.onstop = async ()=>{ const blob=new Blob(chunks,{type:'audio/webm'}); const file=new File([blob],'voice_'+Date.now()+'.webm',{type:'audio/webm'}); const ucFile = uploadcare.fileFrom('object', file); const uploaded = await ucFile.upload(); const url = uploaded.cdnUrl; await db.ref(`rooms/${room}/messages`).push({ name: prof.name||user.email, userId: uid, audio: url, time: Date.now() }); }; recorder.start(); });
+  document.getElementById('sendBtn').addEventListener('click', async ()=>{ const t = document.getElementById('messageInput').value.trim(); if(!t) return; await db.ref(`rooms/${room}/messages`).push({ name: prof.name||user.email, userId: uid, text: t, time: Date.now() }); document.getElementById('messageInput').value=''; });
+  document.getElementById('messageInput').addEventListener('keydown', e=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); document.getElementById('sendBtn').click(); } });
+  let emojiVisible=false; document.getElementById('emojiBtn').addEventListener('click', ()=>{ const picker = document.getElementById('emojiPicker'); if(emojiVisible){ picker.hidden=true; emojiVisible=false; return; } picker.innerHTML=''; const EM=['👍','❤️','😂','🔥','😮','😭','👏','🎉','🙂','😅']; EM.forEach(e=>{ const b=document.createElement('button'); b.textContent=e; b.addEventListener('click', ()=>{ document.getElementById('messageInput').value += e; picker.hidden=true; emojiVisible=false; document.getElementById('messageInput').focus(); }); picker.appendChild(b); }); picker.hidden=false; emojiVisible=true; });
+  db.ref('rooms_meta').on('value', snap=>{ const v=snap.val()||{}; const list=document.getElementById('roomsList'); list.innerHTML=''; Object.keys(v).forEach(k=>{ const li=document.createElement('li'); li.className='room'; li.textContent = k; li.addEventListener('click', ()=> location.href='chat.html?room='+encodeURIComponent(k)); list.appendChild(li); }); });
+  document.getElementById('backBtn').addEventListener('click', ()=> location.href='index_main.html');
+});
+</script></body></html>
